@@ -1,4 +1,4 @@
-## IBC Term Project 18635
+### IBC Term Project 18635
 ### Shaheer Ahmed - 18635
 
 #### Auction Contract
