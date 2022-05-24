@@ -2,6 +2,9 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 contract Auction {
+    ////////////////////////////////////////////////////////////////////////////////
+    /*VARIABLE DECLARATION*/
+
     address payable private owner;
 
     address payable[] public bidders;
@@ -12,23 +15,30 @@ contract Auction {
 
     bool private isStarted = false;
 
-    struct BidItem{
+    struct BidItem {
         string item;
-        uint startingPrice;
-        uint endingPrice;
+        uint256 startingPrice;
+        uint256 endingPrice;
     }
 
     BidItem bidItem;
-    // uint256 private initialBiddingPrice = 0 ether;
-    // uint256 private finalBiddingPrice = 0 ether;
-    // string private biddingItem = "N/A";
+
+    /*VARIABLE DECLARATION*/
+    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /*CONSTRUCTOR*/
 
     //setting owner of the contract
     constructor() {
         owner = payable(msg.sender);
         highestBidder = payable(owner);
-        bidItem = BidItem ("N/A", 0, 0);
+        bidItem = BidItem("N/A", 0, 0);
     }
+
+    /*CONSTRUCTOR*/
+    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /*MODIFIERS*/
 
     //modifer to check if the caller is the owner
     //used for owner specific questions
@@ -58,6 +68,11 @@ contract Auction {
         _;
     }
 
+    /*MODIFIERS*/
+    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /*GETTER FUNCTIONS*/
+
     //public function to allow bidders to see how much they need to bid
     //requires that the owner has launched a bid
     function getHighestBid() external view isLaunched returns (uint256) {
@@ -66,21 +81,35 @@ contract Auction {
 
     //public function to see the item bein bid on
     //requires that the owner has launched a bid
-    function getBiddingItem() external view isLaunched returns (string memory) {
-        return bidItem.item;
+    function getBiddingItemDetails()
+        external
+        view
+        isLaunched
+        returns (
+            string memory,
+            uint256 startingPrice,
+            uint256 endingPrice
+        )
+    {
+        return (bidItem.item, bidItem.startingPrice, bidItem.endingPrice);
     }
 
     //public function to show the current highest bidder
     //requires that the owner has launched a bid
-    function getHighestBidder() external view isLaunched returns (address){
+    function getHighestBidder() external view isLaunched returns (address) {
         return highestBidder;
     }
 
     //public function to show your last bid amount
     //requires that the owner has launched a bid
-    function getYourLastBid() external view isLaunched returns (uint){
+    function getYourLastBid() external view isLaunched returns (uint256) {
         return bids[msg.sender];
     }
+
+    /*GETTER FUNCTIONS*/
+    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /*AUCTION FUNCTIONALITY*/
 
     //function only the owner can use to start a new bid - takes in the new bid details
     //can only be called if there isnt any bid currently taking place
@@ -91,51 +120,79 @@ contract Auction {
     ) external isOwner isNotLaunched {
         //setting bidding details and marking the auction as started
         bidItem.item = _item;
-        bidItem.startingPrice = _initalPrice;
-        bidItem.endingPrice = _finalPrice;
+        bidItem.startingPrice = (_initalPrice * 1000000000000000000);
+        bidItem.endingPrice = (_finalPrice * 1000000000000000000);
         isStarted = true;
 
         //setting the initial highest bid to the start price
-        highestBindingBid = _initalPrice;
+        highestBindingBid = (_initalPrice * 1000000000000000000);
     }
 
     //function only the owner cna use to cancel the bid
     //will only be called if there is a bid currently taking place
     //returns all bids to their respective owners
     function cancleAuction() external isOwner isLaunched {
-        isStarted = false;
-        bidItem.item = "N/A";
-        bidItem.startingPrice = 0;
-        bidItem.endingPrice = 0;
-
         //returning all bids back to their senders
         address payable returnAddr;
         for (uint256 index = 0; index < bidders.length; index++) {
             returnAddr = bidders[index];
             returnAddr.transfer(bids[returnAddr]);
         }
+
+        //resetting all bids/bidder information
+        resetValues();
     }
 
     //function only called by owner to finalize the current bid
+    //returns any excess amount back to the higest bidder
     //checks if no bid has been placed, then does nothing
     //else it transfers the highest bid to the owner
     //returns all other bids to the losing bidders
     //will only be called if there is a bid currently taking place
     function finalizeAuction() external isOwner isLaunched {
+        //paying the owner
         if (highestBindingBid != bidItem.startingPrice) {
-            owner.transfer(highestBindingBid);
+            if (highestBindingBid > bidItem.endingPrice) {
+                uint256 overflow = highestBindingBid - bidItem.endingPrice;
+                owner.transfer(highestBindingBid - overflow);
+                highestBidder.transfer(overflow);
+            } else {
+                owner.transfer(highestBindingBid);
+            }
 
             //returning all bids back to their senders
             address payable returnAddr;
             for (uint256 index = 0; index < bidders.length; index++) {
                 returnAddr = bidders[index];
-
                 if (returnAddr == highestBidder) {
                     continue;
                 } else {
                     returnAddr.transfer(bids[returnAddr]);
                 }
             }
+
+            //resetting all bids/bidder information
+            resetValues();
+        }
+    }
+
+    //internal function used to reset the bid/bidding information
+    //also resets the bidding item details
+    function resetValues() internal {
+        isStarted = false;
+
+        //reseting the BidItem Struct
+        bidItem.item = "N/A";
+        bidItem.startingPrice = 0;
+        bidItem.endingPrice = 0;
+
+        //resetting the highest bid value
+        highestBidder = payable(address(0));
+
+        //resting the array and the map
+        for (uint256 index = 0; index < bidders.length; index++) {
+            bids[bidders[index]] = 0;
+            delete bidders[index];
         }
     }
 
@@ -144,6 +201,10 @@ contract Auction {
     //bid can only be placed if it is greater than the previous highest bid
     //allows for one caller to replace a bid ontop of their previous one
     function placeBid() external payable isNotOwner {
+        require(
+            !(highestBindingBid > bidItem.endingPrice),
+            "Binding limit is complete"
+        );
         uint256 totalBid = msg.value + bids[msg.sender];
         require(totalBid > highestBindingBid, "Not enough to place bid");
         if (totalBid == msg.value) {
@@ -153,4 +214,7 @@ contract Auction {
         highestBindingBid = totalBid;
         highestBidder = payable(msg.sender);
     }
+
+    /*AUCTION FUNCTIONALITY*/
+    ////////////////////////////////////////////////////////////////////////////////
 }
