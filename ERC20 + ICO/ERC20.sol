@@ -2,6 +2,9 @@
 //https://youtu.be/gwn1rVDuGL0?list=PLO5VPQH6OWdVfvNOaEhBtA53XHyHo_oJo - didnt work
 //https://www.quicknode.com/guides/solidity/how-to-create-and-deploy-an-erc20-token - didnt work
 
+//https://www.youtube.com/watch?v=GDq7r1n9zIU - for working ERC20 Token
+//https://gist.github.com/raghu-19/e500786eba2b60034573843ef88fda89 - for working ICO
+
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
@@ -188,6 +191,10 @@ contract SheerToken is IERC20, SafeMath {
     } */ 
 }
 
+//for some reason this is not working properly
+//it is transferring the ether to the owner
+//but it is not giving the token to the investor
+//nor is it reducing the tokens from the owner
 contract SheerTokenICO is SheerToken {
     address payable public admin;
 
@@ -224,14 +231,17 @@ contract SheerTokenICO is SheerToken {
         icoState = State.beforeStart;
     }
 
+    //function to allow pausing of ICO
     function pause() public onlyAdmin {
         icoState = State.Paused;
     }
-
+    //function to allow unpausing of ICO
     function unpause() public onlyAdmin {
         icoState = State.Ongoing;
     }
 
+    //function to return the current state of the ICO
+    //checks the blocktimestamp and returns the state
     function getState() public view returns (State currentState) {
         if (icoState == State.Paused) {
             return State.Paused;
@@ -244,39 +254,45 @@ contract SheerTokenICO is SheerToken {
         }
     }
 
+    //primary function used to invest in the Token
+    //not working properly
+    //ensures state is running and the amount invested is in between the limits
+    //calcuates the tokens that should be sent to the investor
+    //sends ether to admin account
+    //should send token to investor account but is not doing so atm
     function invest() payable external returns (bool success){
         require(getState() == State.Ongoing);
         require(msg.value >= minInvest && msg.value <= maxInvest);
-
         uint tokenToTransfer = msg.value/tokenPrice;
-
         require(amountRaised + msg.value <= hardCap);
-
         amountRaised = amountRaised + msg.value;
 
-
-        // balances[msg.sender] = add(balances[msg.sender] , tokenToTransfer) ;
-        balances[msg.sender] = balances[msg.sender] + tokenToTransfer;
-        // balances[owner] = sub(balances[owner] , tokenToTransfer);
-        balances[owner] = balances[owner] - tokenToTransfer;
+        balances[msg.sender] += tokenToTransfer;
+        balances[owner] -= tokenToTransfer;
 
         admin.transfer(msg.value);
-
         emit Invest(msg.sender, msg.value, tokenToTransfer);
         
         return true;
     }
 
+    //post ICO function transfer
+    //similar to parent function except with timestamp check
     function transfer(address to, uint amount) override public returns (bool success){
         require(block.timestamp > tradeStart);
         return super.transfer(to, amount);
     }
 
+    //post ICO function transferFrom
+    //similar to parent function except with timestamp check
     function transferFrom(address from, address to, uint amount) override public returns(bool success){
         require(block.timestamp > tradeStart);
         return super.transferFrom(from, to, amount);
     }
 
+    //post ICO function allows the admin to burn all the initial coins 
+    //in order to work with the coins that are already in the market
+    //plus mine new coins to maintian the network
     function burn() external onlyAdmin returns (bool success) {
         require(getState() == State.afterEnd);
         balances[owner] = 0;
