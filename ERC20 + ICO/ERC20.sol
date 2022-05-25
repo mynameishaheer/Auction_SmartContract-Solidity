@@ -1,3 +1,7 @@
+//REFERENCES
+//https://youtu.be/gwn1rVDuGL0?list=PLO5VPQH6OWdVfvNOaEhBtA53XHyHo_oJo - didnt work
+//https://www.quicknode.com/guides/solidity/how-to-create-and-deploy-an-erc20-token - didnt work
+ 
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
