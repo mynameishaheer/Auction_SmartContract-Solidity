@@ -5,7 +5,7 @@ This smart contract allows the owner of the contract to hold a bid. Bidders can 
 
 <br />
 This code can be run on any Solidity compiler (preferably Remix IDE).
-<br/>
+<br />
 
 - Owner starts the auction by specifying the item to be bid, the starting price of the bidding, and the highest amount that can be bid after which the contract will no longer take any new incoming bids
  - Bidders enter an amount to bid (in Ether)
