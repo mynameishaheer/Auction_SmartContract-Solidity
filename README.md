@@ -1,6 +1,6 @@
 
 
-#### Auction Contract
+# Auction Contract
 This smart contract allows the owner of the contract to hold a bid. Bidders can view the item as well as its current highest bid. They can choose to add on to their bid as well. When the owner feels the bidding is over they mark the bid as done. Each bidder that did not win recieves their bid amount back while the winner of the bid does not. The highest bid is transferred into the owners account and the auction can start again.
 
 <br />
